@@ -1,3 +1,13 @@
 spring:
   application:
     name: clickort
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+game:
+  lobby:
+    min-players: 5
+    max-nickname-length: 20
+
