@@ -1,50 +1,67 @@
 package com.clicker.clickort.service.impl;
 
+import com.clicker.clickort.dto.PlayerScoreDto;
+import com.clicker.clickort.repository.LobbyRepository;
 import com.clicker.clickort.service.GameService;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import com.clicker.clickort.service.LobbyLeaderboardService;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 @Service
 public class GameServiceImpl implements GameService {
 
-    private static final String GAME_SCORES_KEY = "game:scores";
-    private final StringRedisTemplate redis;
+    public static final String DEFAULT_LOBBY_ID = "main";
+
+    private final LobbyLeaderboardService leaderboardService;
+    private final LobbyRepository lobbyRepository;
     private final ExecutorService gameExecutor;
 
-    public GameServiceImpl(StringRedisTemplate redis, ExecutorService gameExecutor) {
-        this.redis = redis;
+    public GameServiceImpl(LobbyLeaderboardService leaderboardService,
+                           LobbyRepository lobbyRepository,
+                           ExecutorService gameExecutor) {
+        this.leaderboardService = leaderboardService;
+        this.lobbyRepository = lobbyRepository;
         this.gameExecutor = gameExecutor;
     }
 
     @Override
     public void registerClick(String playerId) {
         gameExecutor.submit(() -> {
-            redis.opsForHash().increment(GAME_SCORES_KEY, playerId, 1);
+            lobbyRepository.nicknameOf(playerId).ifPresent(nickname ->
+                    leaderboardService.registerClick(DEFAULT_LOBBY_ID, nickname)
+            );
         });
     }
 
     @Override
     public long getScore(String playerId) {
-        Object score = redis.opsForHash().get(GAME_SCORES_KEY, playerId);
-        return score != null ? Long.parseLong(String.valueOf(score)) : 0L;
+        return lobbyRepository.nicknameOf(playerId)
+                .map(nickname -> {
+                    List<PlayerScoreDto> leaderboard = leaderboardService.getLobbyLeaderboard(DEFAULT_LOBBY_ID);
+                    return leaderboard.stream()
+                            .filter(p -> p.nickname().equalsIgnoreCase(nickname))
+                            .mapToLong(PlayerScoreDto::score)
+                            .findFirst()
+                            .orElse(0L);
+                })
+                .orElse(0L);
     }
 
     @Override
-    public Map<String, Long> getAllScores(String playerId) {
-        Map<Object, Object> raw = redis.opsForHash().entries(GAME_SCORES_KEY);
-        Map<String, Long> result = new HashMap<>();
-        raw.forEach((k, v) -> {result.put((String) k, Long.parseLong(String.valueOf(v)));});
-        return result;
+    public List<PlayerScoreDto> getLeaderboard() {
+        return leaderboardService.getLobbyLeaderboard(DEFAULT_LOBBY_ID);
     }
 
     @Override
     public void resetScores() {
-        redis.delete(GAME_SCORES_KEY);
+        leaderboardService.resetLobby(DEFAULT_LOBBY_ID);
     }
 
-
+    @Override
+    public void removePlayer(String playerId) {
+        lobbyRepository.nicknameOf(playerId)
+                .ifPresent(nickname -> leaderboardService.removePlayer(DEFAULT_LOBBY_ID, nickname));
+    }
 }

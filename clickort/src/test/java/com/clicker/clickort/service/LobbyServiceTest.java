@@ -9,10 +9,12 @@ import com.clicker.clickort.exception.PlayerNotFoundException;
 import com.clicker.clickort.repository.InMemoryLobbyRepository;
 import com.clicker.clickort.service.impl.LobbyServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@DisplayName("LobbyService Unit Tests")
 class LobbyServiceTest {
 
     private InMemoryLobbyRepository repository;
@@ -26,6 +28,7 @@ class LobbyServiceTest {
     }
 
     @Test
+    @DisplayName("Join succeeds with a valid nickname and stores player")
     void joinSucceedsWithValidNickname() {
         String playerId = lobbyService.join("Alice");
         assertNotNull(playerId);
@@ -33,6 +36,7 @@ class LobbyServiceTest {
     }
 
     @Test
+    @DisplayName("Join fails with blank, empty, null or overly long nicknames")
     void joinFailsWithBlankOrTooLongNickname() {
         assertThrows(InvalidNicknameException.class, () -> lobbyService.join(""));
         assertThrows(InvalidNicknameException.class, () -> lobbyService.join("   "));
@@ -41,6 +45,7 @@ class LobbyServiceTest {
     }
 
     @Test
+    @DisplayName("Join rejects case-insensitive duplicate nicknames")
     void joinRejectsCaseInsensitiveDuplicates() {
         lobbyService.join("Alice");
         assertThrows(NicknameTakenException.class, () -> lobbyService.join("alice"));
@@ -48,17 +53,20 @@ class LobbyServiceTest {
     }
 
     @Test
+    @DisplayName("Ready fails when lobby has fewer than required minimum players")
     void readyFailsWhenNotEnoughPlayers() {
         String aliceId = lobbyService.join("Alice");
         assertThrows(NotEnoughPlayersException.class, () -> lobbyService.ready(aliceId));
     }
 
     @Test
+    @DisplayName("Ready fails for unknown or nonexistent playerId")
     void readyFailsForUnknownPlayer() {
         assertThrows(PlayerNotFoundException.class, () -> lobbyService.ready("unknown-id"));
     }
 
     @Test
+    @DisplayName("Ready flag toggles and allReady becomes true only when all players are ready")
     void readyAndAllReadyWorkflow() {
         String p1 = lobbyService.join("Alice");
         String p2 = lobbyService.join("Bob");
@@ -78,6 +86,7 @@ class LobbyServiceTest {
     }
 
     @Test
+    @DisplayName("Leave removes player and frees nickname for reuse")
     void leaveRemovesPlayerAndFreesNickname() {
         String p1 = lobbyService.join("Alice");
         assertEquals(1, lobbyService.state().players().size());

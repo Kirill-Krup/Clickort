@@ -24,8 +24,9 @@ import com.clicker.clickort.service.LobbyService;
  * <pre>
  * {"type":"JOIN","nickname":"alice"}
  * {"type":"READY"}
+ * {"type":"CLICK"}
  * </pre>
- * Closing the connection removes the player from the lobby.
+ * Closing the connection removes the player from the lobby and leaderboard.
  */
 @Component
 public class LobbyWebSocketHandler extends TextWebSocketHandler {
@@ -95,6 +96,7 @@ public class LobbyWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         registry.remove(session.getId()).ifPresent(playerId -> {
+            gameService.removePlayer(playerId);
             lobby.leave(playerId);
             broadcastState();
         });

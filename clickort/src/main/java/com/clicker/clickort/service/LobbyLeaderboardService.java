@@ -1,11 +1,15 @@
 package com.clicker.clickort.service;
 
-import org.springframework.data.redis.core.ZSetOperations;
+import com.clicker.clickort.dto.PlayerScoreDto;
 
-import java.util.Set;
+import java.util.List;
 
 public interface LobbyLeaderboardService {
     void registerClick(String lobbyId, String nickname);
 
-    Set<ZSetOperations.TypedTuple<String>> getLobbyLeaderboard(String lobbyId);
+    List<PlayerScoreDto> getLobbyLeaderboard(String lobbyId);
+
+    void resetLobby(String lobbyId);
+
+    void removePlayer(String lobbyId, String nickname);
 }

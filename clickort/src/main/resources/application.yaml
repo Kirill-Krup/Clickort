@@ -7,6 +7,8 @@ spring:
   threads:
     virtual:
       enabled: true
+  profiles:
+    default: dev
 
   data:
     redis:
@@ -19,4 +21,3 @@ game:
   lobby:
     min-players: 5
     max-nickname-length: 20
-

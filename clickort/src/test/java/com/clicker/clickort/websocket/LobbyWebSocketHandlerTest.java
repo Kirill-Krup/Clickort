@@ -2,11 +2,13 @@ package com.clicker.clickort.websocket;
 
 import com.clicker.clickort.config.LobbyProperties;
 import com.clicker.clickort.repository.InMemoryLobbyRepository;
+import com.clicker.clickort.service.GameService;
 import com.clicker.clickort.service.LobbyService;
 import com.clicker.clickort.service.impl.LobbyServiceImpl;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.web.socket.CloseStatus;
@@ -16,6 +18,7 @@ import org.springframework.web.socket.WebSocketSession;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@DisplayName("LobbyWebSocketHandler Unit Tests")
 class LobbyWebSocketHandlerTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -42,6 +45,7 @@ class LobbyWebSocketHandlerTest {
     }
 
     @Test
+    @DisplayName("afterConnectionEstablished sends current LOBBY_STATE to the connecting client")
     void connectionEstablishedSendsInitialLobbyState() throws Exception {
         WebSocketSession session = mockSession("s1");
         handler.afterConnectionEstablished(session);
@@ -55,6 +59,7 @@ class LobbyWebSocketHandlerTest {
     }
 
     @Test
+    @DisplayName("handleTextMessage with JOIN succeeds, registers session, and returns JOINED message")
     void joinSucceedsAndBindsPlayer() throws Exception {
         WebSocketSession session = mockSession("s1");
         handler.afterConnectionEstablished(session);
@@ -64,7 +69,6 @@ class LobbyWebSocketHandlerTest {
         ArgumentCaptor<TextMessage> captor = ArgumentCaptor.forClass(TextMessage.class);
         verify(session, atLeast(2)).sendMessage(captor.capture());
 
-        // One of the messages sent should be JOINED
         boolean hasJoined = captor.getAllValues().stream()
                 .anyMatch(msg -> msg.getPayload().contains("\"type\":\"JOINED\"") && msg.getPayload().contains("playerId"));
         assertTrue(hasJoined, "Expected JOINED message sent to session");
@@ -73,6 +77,18 @@ class LobbyWebSocketHandlerTest {
     }
 
     @Test
+    @DisplayName("handleTextMessage with CLICK delegates execution to GameService")
+    void clickDelegatesToGameService() {
+        WebSocketSession session = mockSession("s1");
+        handler.afterConnectionEstablished(session);
+        handler.handleTextMessage(session, new TextMessage("{\"type\":\"JOIN\",\"nickname\":\"Alice\"}"));
+
+        handler.handleTextMessage(session, new TextMessage("{\"type\":\"CLICK\"}"));
+        verify(gameService, atLeastOnce()).registerClick(anyString());
+    }
+
+    @Test
+    @DisplayName("handleTextMessage with invalid JSON returns INVALID_MESSAGE error response")
     void invalidJsonReturnsError() throws Exception {
         WebSocketSession session = mockSession("s1");
         handler.afterConnectionEstablished(session);
@@ -88,6 +104,7 @@ class LobbyWebSocketHandlerTest {
     }
 
     @Test
+    @DisplayName("afterConnectionClosed cleans up player from lobby and leaderboard, then broadcasts state")
     void connectionClosedRemovesPlayerAndBroadcasts() {
         WebSocketSession session = mockSession("s1");
         handler.afterConnectionEstablished(session);
@@ -98,5 +115,6 @@ class LobbyWebSocketHandlerTest {
         handler.afterConnectionClosed(session, CloseStatus.NORMAL);
         assertEquals(0, lobbyService.state().players().size());
         assertTrue(registry.playerId("s1").isEmpty());
+        verify(gameService, atLeastOnce()).removePlayer(anyString());
     }
 }

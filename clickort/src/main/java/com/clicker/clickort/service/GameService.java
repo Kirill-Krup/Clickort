@@ -1,12 +1,17 @@
 package com.clicker.clickort.service;
 
-import java.util.Map;
+import com.clicker.clickort.dto.PlayerScoreDto;
+
+import java.util.List;
 
 public interface GameService {
     void registerClick(String playerId);
+
     long getScore(String playerId);
 
-    Map<String, Long> getAllScores(String playerId);
+    List<PlayerScoreDto> getLeaderboard();
 
     void resetScores();
+
+    void removePlayer(String playerId);
 }
