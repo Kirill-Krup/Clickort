@@ -1,6 +1,14 @@
 package com.clicker.clickort.websocket;
 
+import com.clicker.clickort.dto.ClickEvent;
+import com.clicker.clickort.dto.ServerMessageDto;
+import com.clicker.clickort.exception.AlreadyJoinedException;
+import com.clicker.clickort.exception.LobbyException;
+import com.clicker.clickort.exception.NotJoinedException;
 import com.clicker.clickort.service.GameService;
+import com.clicker.clickort.service.KafkaMessengerService;
+import com.clicker.clickort.service.LobbyService;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -8,16 +16,11 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
-
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-import com.clicker.clickort.dto.ServerMessageDto;
-import com.clicker.clickort.exception.AlreadyJoinedException;
-import com.clicker.clickort.exception.LobbyException;
-import com.clicker.clickort.exception.NotJoinedException;
-import com.clicker.clickort.service.LobbyService;
+import java.time.Instant;
 
 /**
  * Client messages:
@@ -28,6 +31,7 @@ import com.clicker.clickort.service.LobbyService;
  * Closing the connection removes the player from the lobby.
  */
 @Component
+@RequiredArgsConstructor
 public class LobbyWebSocketHandler extends TextWebSocketHandler {
 
     private static final Logger log = LoggerFactory.getLogger(LobbyWebSocketHandler.class);
@@ -36,13 +40,7 @@ public class LobbyWebSocketHandler extends TextWebSocketHandler {
     private final WebSocketSessionRegistry registry;
     private final ObjectMapper mapper;
     private final GameService gameService;
-
-    public LobbyWebSocketHandler(LobbyService lobby, WebSocketSessionRegistry registry, ObjectMapper mapper, GameService gameService) {
-        this.lobby = lobby;
-        this.registry = registry;
-        this.mapper = mapper;
-        this.gameService = gameService;
-    }
+    private final KafkaMessengerService<String, ClickEvent> kafkaMessengerService;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -85,6 +83,7 @@ public class LobbyWebSocketHandler extends TextWebSocketHandler {
     private void handleClick(String sessionId) {
         String playerId = registry.playerId(sessionId).orElseThrow(NotJoinedException::new);
         gameService.registerClick(playerId);
+        kafkaMessengerService.send(new ClickEvent("", playerId, "", Instant.now()));
     }
 
     @Override

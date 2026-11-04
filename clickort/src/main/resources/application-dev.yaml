@@ -13,3 +13,6 @@ spring:
           max-idle: 10
           min-idle: 5
           max-wait: 2000ms
+
+topic:
+  name: ${TOPIC_NAME:"game_topic"}
