@@ -1,5 +1,6 @@
 package com.clicker.clickort.websocket;
 
+import com.clicker.clickort.service.GameService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -34,11 +35,13 @@ public class LobbyWebSocketHandler extends TextWebSocketHandler {
     private final LobbyService lobby;
     private final WebSocketSessionRegistry registry;
     private final ObjectMapper mapper;
+    private final GameService gameService;
 
-    public LobbyWebSocketHandler(LobbyService lobby, WebSocketSessionRegistry registry, ObjectMapper mapper) {
+    public LobbyWebSocketHandler(LobbyService lobby, WebSocketSessionRegistry registry, ObjectMapper mapper, GameService gameService) {
         this.lobby = lobby;
         this.registry = registry;
         this.mapper = mapper;
+        this.gameService = gameService;
     }
 
     @Override
@@ -68,6 +71,7 @@ public class LobbyWebSocketHandler extends TextWebSocketHandler {
             switch (type) {
                 case "JOIN" -> join(sessionId, text(root, "nickname"));
                 case "READY" -> ready(sessionId);
+                case "CLICK" -> handleClick(sessionId);
                 default -> sendError(sessionId, "UNKNOWN_TYPE", "Unknown message type: " + type);
             }
         } catch (LobbyException e) {
@@ -76,6 +80,11 @@ public class LobbyWebSocketHandler extends TextWebSocketHandler {
             log.error("Unexpected error handling message from session {}", sessionId, e);
             sendError(sessionId, "INTERNAL_ERROR", "Internal server error");
         }
+    }
+
+    private void handleClick(String sessionId) {
+        String playerId = registry.playerId(sessionId).orElseThrow(NotJoinedException::new);
+        gameService.registerClick(playerId);
     }
 
     @Override

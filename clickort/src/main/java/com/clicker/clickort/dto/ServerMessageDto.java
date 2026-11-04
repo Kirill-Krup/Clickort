@@ -2,6 +2,8 @@ package com.clicker.clickort.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import java.util.List;
+
 /**
  * Every message the server sends. Fields that do not apply to a given type are omitted from the JSON.
  *
@@ -21,6 +23,7 @@ public record ServerMessageDto(String type, String playerId, LobbyStateDto state
     public static ServerMessageDto lobbyState(LobbyStateDto state) {
         return new ServerMessageDto("LOBBY_STATE", null, state, null, null);
     }
+
 
     public static ServerMessageDto error(String code, String message) {
         return new ServerMessageDto("ERROR", null, null, code, message);

@@ -20,6 +20,7 @@ class LobbyWebSocketHandlerTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
     private LobbyService lobbyService;
+    private GameService gameService;
     private WebSocketSessionRegistry registry;
     private LobbyWebSocketHandler handler;
 
@@ -28,8 +29,9 @@ class LobbyWebSocketHandlerTest {
         InMemoryLobbyRepository repository = new InMemoryLobbyRepository();
         LobbyProperties properties = new LobbyProperties(2, 20);
         lobbyService = new LobbyServiceImpl(repository, properties);
+        gameService = mock(GameService.class);
         registry = new WebSocketSessionRegistry(mapper);
-        handler = new LobbyWebSocketHandler(lobbyService, registry, mapper);
+        handler = new LobbyWebSocketHandler(lobbyService, registry, mapper, gameService);
     }
 
     private WebSocketSession mockSession(String id) {
