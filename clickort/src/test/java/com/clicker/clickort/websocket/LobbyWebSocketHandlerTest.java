@@ -4,9 +4,8 @@ import com.clicker.clickort.config.LobbyProperties;
 import com.clicker.clickort.repository.InMemoryLobbyRepository;
 import com.clicker.clickort.service.GameService;
 import com.clicker.clickort.service.LobbyService;
+import com.clicker.clickort.service.impl.KafkaMessengerServiceImpl;
 import com.clicker.clickort.service.impl.LobbyServiceImpl;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,8 +13,11 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 @DisplayName("LobbyWebSocketHandler Unit Tests")
@@ -26,6 +28,7 @@ class LobbyWebSocketHandlerTest {
     private GameService gameService;
     private WebSocketSessionRegistry registry;
     private LobbyWebSocketHandler handler;
+    private KafkaMessengerServiceImpl kafkaMessengerService;
 
     @BeforeEach
     void setUp() {
@@ -34,7 +37,7 @@ class LobbyWebSocketHandlerTest {
         lobbyService = new LobbyServiceImpl(repository, properties);
         gameService = mock(GameService.class);
         registry = new WebSocketSessionRegistry(mapper);
-        handler = new LobbyWebSocketHandler(lobbyService, registry, mapper, gameService);
+        handler = new LobbyWebSocketHandler(lobbyService, registry, mapper, gameService, kafkaMessengerService);
     }
 
     private WebSocketSession mockSession(String id) {
