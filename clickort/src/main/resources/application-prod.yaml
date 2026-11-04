@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: clickort
+  data:
+    redis:
+      host: redis
+      port: 6379
+  kafka:
+    bootstrap-servers: kafka:9092
+
+game:
+  lobby:
+    min-players: 5
+    max-nickname-length: 20
