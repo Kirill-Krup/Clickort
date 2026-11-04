@@ -1,9 +1,22 @@
+server:
+  port: ${APP_PORT:8081}
+
 spring:
   application:
     name: clickort
   threads:
     virtual:
       enabled: true
-  profiles:
-    active: dev
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: 6379
+      password: ${REDIS_PASSWORD:}
+      database: 0
+
+game:
+  lobby:
+    min-players: 5
+    max-nickname-length: 20
 
