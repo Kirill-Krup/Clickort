@@ -5,7 +5,13 @@ spring:
 
   data:
     redis:
-      connect-timeout: 2000ms
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      username: ${REDIS_USERNAME:default}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:true}
+      connect-timeout: 5000ms
       client-type: lettuce
       lettuce:
         pool:
@@ -13,6 +19,16 @@ spring:
           max-idle: 10
           min-idle: 5
           max-wait: 2000ms
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    admin:
+      fail-fast: false
+    properties:
+      security.protocol: ${KAFKA_SECURITY_PROTOCOL:SASL_SSL}
+      sasl.mechanism: ${KAFKA_SASL_MECHANISM:SCRAM-SHA-256}
+      sasl.jaas.config: ${KAFKA_SASL_JAAS_CONFIG:org.apache.kafka.common.security.scram.ScramLoginModule required username="${KAFKA_USERNAME:}" password="${KAFKA_PASSWORD:}";}
+      ssl.endpoint.identification.algorithm: https
 
 topic:
   name: ${TOPIC_NAME:game_topic}

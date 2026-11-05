@@ -1,5 +1,5 @@
 server:
-  port: ${APP_PORT:8081}
+  port: ${PORT:${APP_PORT:8081}}
 
 spring:
   application:
@@ -13,9 +13,12 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST:localhost}
-      port: 6379
+      port: ${REDIS_PORT:6379}
+      username: ${REDIS_USERNAME:default}
       password: ${REDIS_PASSWORD:}
-      database: 0
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
+      database: ${REDIS_DATABASE:0}
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -37,6 +40,12 @@ spring:
         spring.json.trusted.packages: "*"
         spring.json.add.type.headers: false
         spring.json.value.default.type: "com.clicker.clickort.dto.ClickEvent"
+    admin:
+      fail-fast: false
+    properties:
+      security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+      sasl.mechanism: ${KAFKA_SASL_MECHANISM:SCRAM-SHA-256}
+      sasl.jaas.config: ${KAFKA_SASL_JAAS_CONFIG:}
 
 topic:
   name: ${TOPIC_NAME:game_topic}
