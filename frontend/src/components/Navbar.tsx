@@ -46,7 +46,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         <div className={`status-pill ${connected ? 'online' : 'offline'}`}>
           {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
-          <span>{connected ? 'Онлайн (8081)' : 'Отключен'}</span>
+          <span>{connected ? 'Онлайн' : 'Отключен'}</span>
         </div>
       </div>
     </header>

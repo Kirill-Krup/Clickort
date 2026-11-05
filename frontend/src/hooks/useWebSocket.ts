@@ -1,10 +1,29 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { LobbyState, PlayerScore, ServerMessage } from '../types';
 
-const DEFAULT_WS_URL = import.meta.env.VITE_WS_URL || 
-  (typeof window !== 'undefined' 
-    ? (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.hostname + ':8081/ws'
-    : 'ws://localhost:8081/ws');
+function resolveWsUrl(): string {
+  const envUrl = import.meta.env.VITE_WS_URL;
+  if (envUrl) {
+    if (envUrl.startsWith('/')) {
+      if (typeof window !== 'undefined') {
+        const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        return `${proto}//${window.location.host}${envUrl}`;
+      }
+      return `ws://localhost:8081${envUrl}`;
+    }
+    return envUrl;
+  }
+  if (typeof window !== 'undefined') {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    if (window.location.port === '3000') {
+      return `${proto}//${window.location.hostname}:8081/ws`;
+    }
+    return `${proto}//${window.location.host}/ws`;
+  }
+  return 'ws://localhost:8081/ws';
+}
+
+const DEFAULT_WS_URL = resolveWsUrl();
 
 export function useWebSocket() {
   const [connected, setConnected] = useState(false);
