@@ -1,7 +1,9 @@
-package com.clicker.clickort.service;
+package com.clicker.clickort.service.impl;
 
 import com.clicker.clickort.dto.PlayerScoreDto;
 import com.clicker.clickort.dto.ServerMessageDto;
+import com.clicker.clickort.service.GameService;
+import com.clicker.clickort.service.GameTickerService;
 import com.clicker.clickort.websocket.WebSocketSessionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,26 +12,20 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-/**
- * Periodically broadcasts current leaderboard scores to all connected clients.
- * This decouples score broadcasting from the high-frequency incoming click stream.
- */
 @Service
-public class GameTickerService {
+public class GameTickerServiceImpl implements GameTickerService {
 
-    private static final Logger log = LoggerFactory.getLogger(GameTickerService.class);
+    private static final Logger log = LoggerFactory.getLogger(GameTickerServiceImpl.class);
 
     private final GameService gameService;
     private final WebSocketSessionRegistry registry;
 
-    public GameTickerService(GameService gameService, WebSocketSessionRegistry registry) {
+    public GameTickerServiceImpl(GameService gameService, WebSocketSessionRegistry registry) {
         this.gameService = gameService;
         this.registry = registry;
     }
 
-    /**
-     * Broadcasts scores 10 times a second (every 100 ms) if there are active scores.
-     */
+    @Override
     @Scheduled(fixedRate = 100)
     public void broadcastLeaderboard() {
         try {

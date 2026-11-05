@@ -15,4 +15,9 @@ spring:
           max-wait: 2000ms
 
 topic:
-  name: ${TOPIC_NAME:}
+  name: ${TOPIC_NAME:game_topic}
+
+game:
+  lobby:
+    min-players: ${MIN_PLAYERS:2}
+    max-nickname-length: 20

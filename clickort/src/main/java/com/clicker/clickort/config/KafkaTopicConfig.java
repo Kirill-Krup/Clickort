@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 public class KafkaTopicConfig {
 
     @Bean
-    public NewTopic executeTopic(@Value("${TOPIC_NAME:}") String topicName) {
+    public NewTopic executeTopic(@Value("${topic.name:game_topic}") String topicName) {
         return new NewTopic(topicName, 5, (short) 1);
     }
 }

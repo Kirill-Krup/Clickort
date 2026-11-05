@@ -1,10 +1,6 @@
 package com.clicker.clickort.service.impl;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 import com.clicker.clickort.config.LobbyProperties;
 import com.clicker.clickort.dto.LobbyStateDto;
@@ -63,6 +59,11 @@ public class LobbyServiceImpl implements LobbyService {
         repository.markReady(playerId);
     }
 
+    @Override
+    public void clearReady() {
+        repository.clearReady();
+    }
+
     /** Removes the player from the lobby. Unknown ids are ignored. */
     @Override
     public void leave(String playerId) {
@@ -82,6 +83,19 @@ public class LobbyServiceImpl implements LobbyService {
         boolean canReady = views.size() >= properties.minPlayers();
         boolean allReady = canReady && views.stream().allMatch(PlayerDto::ready);
         return new LobbyStateDto(views, properties.minPlayers(), canReady, allReady);
+    }
+
+    @Override
+    public Optional<String> nicknameOf(String playerId) {
+        return repository.nicknameOf(playerId);
+    }
+
+    @Override
+    public Optional<String> playerIdOf(String rawNickname) {
+        if (rawNickname == null || rawNickname.isBlank()) {
+            return Optional.empty();
+        }
+        return repository.playerIdOf(rawNickname.trim());
     }
 
     private String validate(String rawNickname) {

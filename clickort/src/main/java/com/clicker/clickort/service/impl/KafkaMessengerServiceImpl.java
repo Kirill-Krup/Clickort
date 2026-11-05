@@ -16,11 +16,11 @@ public class KafkaMessengerServiceImpl implements KafkaMessengerService<String, 
 
     private final KafkaTemplate<String, ClickEvent> kafkaTemplate;
 
-    @Value("${topic.name}")
+    @Value("${topic.name:game_topic}")
     private String topicName;
 
     @Override
     public CompletableFuture<SendResult<String, ClickEvent>> send(ClickEvent clickEvent) {
-        return kafkaTemplate.send(topicName, clickEvent);
+        return kafkaTemplate.send(topicName, clickEvent.lobbyId(), clickEvent);
     }
 }

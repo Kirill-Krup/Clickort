@@ -3,6 +3,7 @@ package com.clicker.clickort.service.impl;
 import com.clicker.clickort.dto.PlayerScoreDto;
 import com.clicker.clickort.service.LobbyLeaderboardService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LobbyLeaderboardServiceImpl implements LobbyLeaderboardService {

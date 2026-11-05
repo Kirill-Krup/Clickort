@@ -1,10 +1,11 @@
 package com.clicker.clickort.websocket;
 
 import com.clicker.clickort.config.LobbyProperties;
+import com.clicker.clickort.dto.ClickEvent;
 import com.clicker.clickort.repository.InMemoryLobbyRepository;
 import com.clicker.clickort.service.GameService;
+import com.clicker.clickort.service.KafkaMessengerService;
 import com.clicker.clickort.service.LobbyService;
-import com.clicker.clickort.service.impl.KafkaMessengerServiceImpl;
 import com.clicker.clickort.service.impl.LobbyServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,14 +29,16 @@ class LobbyWebSocketHandlerTest {
     private GameService gameService;
     private WebSocketSessionRegistry registry;
     private LobbyWebSocketHandler handler;
-    private KafkaMessengerServiceImpl kafkaMessengerService;
+    private KafkaMessengerService<String, ClickEvent> kafkaMessengerService;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
         InMemoryLobbyRepository repository = new InMemoryLobbyRepository();
         LobbyProperties properties = new LobbyProperties(2, 20);
         lobbyService = new LobbyServiceImpl(repository, properties);
         gameService = mock(GameService.class);
+        kafkaMessengerService = mock(KafkaMessengerService.class);
         registry = new WebSocketSessionRegistry(mapper);
         handler = new LobbyWebSocketHandler(lobbyService, registry, mapper, gameService, kafkaMessengerService);
     }
@@ -80,14 +83,14 @@ class LobbyWebSocketHandlerTest {
     }
 
     @Test
-    @DisplayName("handleTextMessage with CLICK delegates execution to GameService")
-    void clickDelegatesToGameService() {
+    @DisplayName("handleTextMessage with CLICK delegates execution to KafkaMessengerService")
+    void clickDelegatesToKafkaMessengerService() {
         WebSocketSession session = mockSession("s1");
         handler.afterConnectionEstablished(session);
         handler.handleTextMessage(session, new TextMessage("{\"type\":\"JOIN\",\"nickname\":\"Alice\"}"));
 
         handler.handleTextMessage(session, new TextMessage("{\"type\":\"CLICK\"}"));
-        verify(gameService, atLeastOnce()).registerClick(anyString());
+        verify(kafkaMessengerService, atLeastOnce()).send(any(ClickEvent.class));
     }
 
     @Test
@@ -119,5 +122,58 @@ class LobbyWebSocketHandlerTest {
         assertEquals(0, lobbyService.state().players().size());
         assertTrue(registry.playerId("s1").isEmpty());
         verify(gameService, atLeastOnce()).removePlayer(anyString());
+    }
+
+    @Test
+    @DisplayName("handleTransportError closes session with error status")
+    void transportErrorClosesSession() throws Exception {
+        WebSocketSession session = mockSession("s1");
+        handler.afterConnectionEstablished(session);
+        handler.handleTextMessage(session, new TextMessage("{\"type\":\"JOIN\",\"nickname\":\"Alice\"}"));
+
+        handler.handleTransportError(session, new RuntimeException("connection aborted"));
+        verify(session, atLeastOnce()).close(any(CloseStatus.class));
+    }
+
+    @Test
+    @DisplayName("handleTextMessage with LEAVE cleans up player session")
+    void leaveCleansUpPlayer() {
+        WebSocketSession session = mockSession("s1");
+        handler.afterConnectionEstablished(session);
+        handler.handleTextMessage(session, new TextMessage("{\"type\":\"JOIN\",\"nickname\":\"Alice\"}"));
+
+        assertEquals(1, lobbyService.state().players().size());
+
+        handler.handleTextMessage(session, new TextMessage("{\"type\":\"LEAVE\"}"));
+        assertEquals(0, lobbyService.state().players().size());
+        assertTrue(registry.playerId("s1").isEmpty());
+    }
+
+    @Test
+    @DisplayName("session can rejoin with new nickname after LEAVE")
+    void sessionCanRejoinAfterLeave() {
+        WebSocketSession session = mockSession("s1");
+        handler.afterConnectionEstablished(session);
+        handler.handleTextMessage(session, new TextMessage("{\"type\":\"JOIN\",\"nickname\":\"Alice\"}"));
+        assertEquals(1, lobbyService.state().players().size());
+
+        handler.handleTextMessage(session, new TextMessage("{\"type\":\"LEAVE\"}"));
+        assertEquals(0, lobbyService.state().players().size());
+
+        handler.handleTextMessage(session, new TextMessage("{\"type\":\"JOIN\",\"nickname\":\"Bob\"}"));
+        assertEquals(1, lobbyService.state().players().size());
+        assertEquals("Bob", lobbyService.state().players().get(0).nickname());
+        assertTrue(registry.playerId("s1").isPresent());
+    }
+
+    @Test
+    @DisplayName("handleTextMessage with RESTART resets scores and clears ready status")
+    void restartResetsScoresAndClearsReady() {
+        WebSocketSession session = mockSession("s1");
+        handler.afterConnectionEstablished(session);
+        handler.handleTextMessage(session, new TextMessage("{\"type\":\"JOIN\",\"nickname\":\"Alice\"}"));
+
+        handler.handleTextMessage(session, new TextMessage("{\"type\":\"RESTART\"}"));
+        verify(gameService, atLeastOnce()).resetScores();
     }
 }

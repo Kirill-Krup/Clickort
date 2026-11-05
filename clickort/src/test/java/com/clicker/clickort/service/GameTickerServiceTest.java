@@ -2,6 +2,7 @@ package com.clicker.clickort.service;
 
 import com.clicker.clickort.dto.PlayerScoreDto;
 import com.clicker.clickort.dto.ServerMessageDto;
+import com.clicker.clickort.service.impl.GameTickerServiceImpl;
 import com.clicker.clickort.websocket.WebSocketSessionRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,13 +19,13 @@ class GameTickerServiceTest {
 
     private GameService gameService;
     private WebSocketSessionRegistry registry;
-    private GameTickerService tickerService;
+    private GameTickerServiceImpl tickerService;
 
     @BeforeEach
     void setUp() {
         gameService = mock(GameService.class);
         registry = mock(WebSocketSessionRegistry.class);
-        tickerService = new GameTickerService(gameService, registry);
+        tickerService = new GameTickerServiceImpl(gameService, registry);
     }
 
     @Test

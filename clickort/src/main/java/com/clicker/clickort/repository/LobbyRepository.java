@@ -23,10 +23,14 @@ public interface LobbyRepository {
 
     Optional<String> nicknameOf(String playerId);
 
+    Optional<String> playerIdOf(String nickname);
+
     /** Removes the player, frees the nickname and clears the ready flag. Unknown ids are ignored. */
     void removePlayer(String playerId);
 
     void markReady(String playerId);
+
+    void clearReady();
 
     /** All players as playerId to nickname. */
     Map<String, String> players();

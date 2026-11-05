@@ -47,7 +47,6 @@ class GameServiceImplTest {
 
         gameService.registerClick(playerId);
 
-        // Wait briefly for executor task to finish
         Thread.sleep(100);
 
         verify(lobbyRepository).nicknameOf(playerId);

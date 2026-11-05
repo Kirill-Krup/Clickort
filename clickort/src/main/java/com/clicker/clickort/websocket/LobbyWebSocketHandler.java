@@ -1,13 +1,16 @@
 package com.clicker.clickort.websocket;
 
 import com.clicker.clickort.dto.ClickEvent;
+import com.clicker.clickort.dto.LobbyStateDto;
 import com.clicker.clickort.dto.ServerMessageDto;
 import com.clicker.clickort.exception.AlreadyJoinedException;
 import com.clicker.clickort.exception.LobbyException;
+import com.clicker.clickort.exception.NicknameTakenException;
 import com.clicker.clickort.exception.NotJoinedException;
 import com.clicker.clickort.service.GameService;
 import com.clicker.clickort.service.KafkaMessengerService;
 import com.clicker.clickort.service.LobbyService;
+import com.clicker.clickort.service.impl.GameServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +23,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-import java.time.Instant;
+import java.util.Optional;
 
 /**
  * Client messages:
@@ -71,6 +74,8 @@ public class LobbyWebSocketHandler extends TextWebSocketHandler {
                 case "JOIN" -> join(sessionId, text(root, "nickname"));
                 case "READY" -> ready(sessionId);
                 case "CLICK" -> handleClick(sessionId);
+                case "LEAVE" -> leave(sessionId);
+                case "RESTART" -> restartGame();
                 default -> sendError(sessionId, "UNKNOWN_TYPE", "Unknown message type: " + type);
             }
         } catch (LobbyException e) {
@@ -83,18 +88,36 @@ public class LobbyWebSocketHandler extends TextWebSocketHandler {
 
     private void handleClick(String sessionId) {
         String playerId = registry.playerId(sessionId).orElseThrow(NotJoinedException::new);
-        gameService.registerClick(playerId);
-        kafkaMessengerService.send(new ClickEvent("", playerId, "", Instant.now()));
+        String nickname = lobby.nicknameOf(playerId).orElseThrow(NotJoinedException::new);
+        kafkaMessengerService.send(new ClickEvent(GameServiceImpl.DEFAULT_LOBBY_ID, nickname));
+    }
+
+    private void leave(String sessionId) {
+        registry.unbind(sessionId).ifPresent(playerId -> {
+            gameService.removePlayer(playerId);
+            lobby.leave(playerId);
+            broadcastState();
+        });
     }
 
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
         log.warn("Transport error for session {}: {}", session.getId(), exception.getMessage());
+        try {
+            if (session.isOpen()) {
+                session.close(CloseStatus.SERVER_ERROR);
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        registry.remove(session.getId()).ifPresent(playerId -> {
+        cleanupSession(session.getId());
+    }
+
+    private void cleanupSession(String sessionId) {
+        registry.remove(sessionId).ifPresent(playerId -> {
             gameService.removePlayer(playerId);
             lobby.leave(playerId);
             broadcastState();
@@ -102,16 +125,32 @@ public class LobbyWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void join(String sessionId, String nickname) {
+        if (!registry.hasSession(sessionId)) {
+            log.debug("Session {} is no longer active, ignoring JOIN for {}", sessionId, nickname);
+            return;
+        }
         if (registry.playerId(sessionId).isPresent()) {
             throw new AlreadyJoinedException();
         }
-        String playerId = lobby.join(nickname);
-        try {
-            registry.bind(sessionId, playerId);
-        } catch (IllegalStateException e) {
-            lobby.leave(playerId);
-            throw e;
+
+        Optional<String> existingId = lobby.playerIdOf(nickname);
+        String playerId;
+        if (existingId.isPresent()) {
+            String id = existingId.get();
+            if (registry.isPlayerConnected(id)) {
+                throw new NicknameTakenException(nickname);
+            }
+            playerId = id;
+        } else {
+            playerId = lobby.join(nickname);
         }
+
+        if (!registry.bind(sessionId, playerId)) {
+            lobby.leave(playerId);
+            log.debug("Session {} was closed before join could complete, cleaned up player {}", sessionId, playerId);
+            return;
+        }
+
         registry.sendTo(sessionId, ServerMessageDto.joined(playerId));
         broadcastState();
     }
@@ -119,6 +158,18 @@ public class LobbyWebSocketHandler extends TextWebSocketHandler {
     private void ready(String sessionId) {
         String playerId = registry.playerId(sessionId).orElseThrow(NotJoinedException::new);
         lobby.ready(playerId);
+        LobbyStateDto state = lobby.state();
+        if (state.allReady()) {
+            gameService.resetScores();
+            registry.broadcast(ServerMessageDto.scores(java.util.List.of()));
+        }
+        broadcastState();
+    }
+
+    private void restartGame() {
+        gameService.resetScores();
+        lobby.clearReady();
+        registry.broadcast(ServerMessageDto.scores(java.util.List.of()));
         broadcastState();
     }
 

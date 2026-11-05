@@ -45,16 +45,28 @@ public class WebSocketSessionRegistry {
                 new ConcurrentWebSocketSessionDecorator(session, SEND_TIME_LIMIT_MS, SEND_BUFFER_LIMIT_BYTES));
     }
 
-    /** @throws IllegalStateException if the session was never registered (or is already gone) */
-    public void bind(String sessionId, String playerId) {
+    public boolean hasSession(String sessionId) {
+        return sessions.containsKey(sessionId);
+    }
+
+    public synchronized boolean bind(String sessionId, String playerId) {
         if (!sessions.containsKey(sessionId)) {
-            throw new IllegalStateException("Unknown session: " + sessionId);
+            return false;
         }
         playerBySession.put(sessionId, playerId);
+        return true;
+    }
+
+    public synchronized Optional<String> unbind(String sessionId) {
+        return Optional.ofNullable(playerBySession.remove(sessionId));
     }
 
     public Optional<String> playerId(String sessionId) {
         return Optional.ofNullable(playerBySession.get(sessionId));
+    }
+
+    public boolean isPlayerConnected(String playerId) {
+        return playerBySession.containsValue(playerId);
     }
 
     /**
@@ -62,7 +74,7 @@ public class WebSocketSessionRegistry {
      *
      * @return the player that was bound to it, if any
      */
-    public Optional<String> remove(String sessionId) {
+    public synchronized Optional<String> remove(String sessionId) {
         sessions.remove(sessionId);
         return Optional.ofNullable(playerBySession.remove(sessionId));
     }

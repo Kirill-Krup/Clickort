@@ -32,6 +32,11 @@ public class InMemoryLobbyRepository implements LobbyRepository {
     }
 
     @Override
+    public Optional<String> playerIdOf(String nickname) {
+        return Optional.ofNullable(nicknames.get(nickname.toLowerCase(Locale.ROOT)));
+    }
+
+    @Override
     public synchronized void removePlayer(String playerId) {
         String nickname = players.remove(playerId);
         ready.remove(playerId);
@@ -43,6 +48,11 @@ public class InMemoryLobbyRepository implements LobbyRepository {
     @Override
     public void markReady(String playerId) {
         ready.add(playerId);
+    }
+
+    @Override
+    public void clearReady() {
+        ready.clear();
     }
 
     @Override

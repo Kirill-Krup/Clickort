@@ -52,6 +52,12 @@ public class RedisLobbyRepository implements LobbyRepository {
     }
 
     @Override
+    public Optional<String> playerIdOf(String nickname) {
+        Object playerId = redis.opsForHash().get(NICKNAMES_KEY, nicknameKey(nickname));
+        return Optional.ofNullable((String) playerId);
+    }
+
+    @Override
     public void removePlayer(String playerId) {
         Optional<String> nickname = nicknameOf(playerId);
         redis.opsForSet().remove(READY_KEY, playerId);
@@ -62,6 +68,11 @@ public class RedisLobbyRepository implements LobbyRepository {
     @Override
     public void markReady(String playerId) {
         redis.opsForSet().add(READY_KEY, playerId);
+    }
+
+    @Override
+    public void clearReady() {
+        redis.delete(READY_KEY);
     }
 
     @Override
