@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+
+  redis-clicker:
+    image: redis:8-alpine
+    container_name: redis-clicker
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - clickort-net
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  kafka-clicker:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka-clicker
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-clicker:9092'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-clicker:9093'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      CLUSTER_ID: 'Mk3OEYBSD34-W1W7127bHw'
+    ports:
+      - "9092:9092"
+    networks:
+      - clickort-net
+    healthcheck:
+      test: [ "CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  clicker-app:
+    build:
+      context: ./clickort
+      dockerfile: Dockerfile
+    container_name: clicker-app
+    restart: unless-stopped
+    depends_on:
+      redis-clicker:
+        condition: service_healthy
+      kafka-clicker:
+        condition: service_healthy
+    environment:
+      APP_PORT: "8081"
+      SPRING_PROFILES_ACTIVE: "prod"
+      REDIS_HOST: "redis-clicker"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka-clicker:9092"
+      TOPIC_NAME: "clicker-events"
+    ports:
+      - "8081:8081"
+    networks:
+      clickort-net:
+        aliases:
+          - backend
+          - clicker-app
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_WS_URL=${VITE_WS_URL:-}
+    container_name: clickort-frontend
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    depends_on:
+      - clicker-app
+    networks:
+      - clickort-net
+
+networks:
+  clickort-net:
+    name: clickort-net
+    driver: bridge
